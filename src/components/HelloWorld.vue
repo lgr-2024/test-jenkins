@@ -16,7 +16,7 @@ defineProps({
       <a href="https://vuejs.org/" target="_blank" rel="noopener">Vue 3</a>.
     </h3>
   </div>
-  <div>Hello World 3123123123123123</div>
+  <div>Hello World 3123123123123123asdasdasdasda</div>
 </template>
 
 <style scoped>
