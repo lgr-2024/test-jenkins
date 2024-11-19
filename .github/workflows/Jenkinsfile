@@ -1,0 +1,134 @@
+pipeline {
+    agent any // Jenkins 빌드를 실행할 에이전트 정의
+
+    environment {
+        // 환경 변수 정의 (GitHub Token 등 자격 증명 추가)
+        GITHUB_TOKEN = credentials('github-token')
+        TELEGRAM_BOT_TOKEN = credentials('telegram-bot-token')
+        PR_NOTICE_TELEGRAM_ID = credentials('pr-notice-telegram-id')
+        READ_PACKAGES = credentials('read-packages')
+        NODE_VERSION = '20'
+        PNPM_VERSION = '9'
+    }
+
+    stages {
+        // Checkout 소스 코드
+        stage('Checkout') {
+            steps {
+                git url: 'https://github.com/devtools-dev/frontend-mono.git', 
+                    credentialsId: 'github-token',
+                    branch: 'dev' // Pull Request를 실행하려는 브랜치
+            }
+        }
+
+        // 충돌 체크 단계
+        stage('Check for Conflicts') {
+            steps {
+                withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
+                    script {
+                        def baseBranch = 'dev'
+                        def headBranch = sh(script: "git rev-parse --abbrev-ref HEAD", returnStdout: true).trim()
+                        sh """
+                        git fetch https://${GITHUB_TOKEN}@github.com/devtools-dev/frontend-mono.git ${baseBranch}:${baseBranch} --update-head-ok
+                        git fetch https://${GITHUB_TOKEN}@github.com/devtools-dev/frontend-mono.git ${headBranch}:${headBranch}
+                        
+                        HAS_CONFLICTS=\$(git merge-tree \$(git merge-base ${baseBranch} ${headBranch}) ${baseBranch} ${headBranch} | grep "<<<<<<<" || true)
+                        if [[ -z "\$HAS_CONFLICTS" ]]; then
+                            echo "No conflicts detected."
+                            echo "conflict=false" > conflict_status.txt
+                        else
+                            echo "Conflicts detected!"
+                            echo "conflict=true" > conflict_status.txt
+                        fi
+                        """
+                    }
+                }
+            }
+        }
+
+        // 캐싱 및 의존성 설치
+        stage('Cache pnpm modules') {
+            steps {
+                script {
+                    if (fileExists('pnpm-lock.yaml')) {
+                        cache(path: '.pnpm-store', key: "pnpm-cache-${env.BUILD_NUMBER}", restoreKeys: ['pnpm-cache'])
+                    }
+                }
+                sh 'pnpm install'
+            }
+        }
+
+        // Node.js 및 pnpm 설치
+        stage('Install Node.js and pnpm') {
+            steps {
+                sh """
+                nvm install ${NODE_VERSION}
+                npm install -g pnpm@${PNPM_VERSION}
+                """
+            }
+        }
+
+        // 의존성 설치 단계
+        stage('Install dependencies') {
+            steps {
+                sh 'pnpm install'
+            }
+        }
+
+        // 특정 UI 패키지 빌드 단계
+        stage('Build @devtools-dev/ui') {
+            steps {
+                sh 'pnpm --filter @devtools-dev/ui build-only'
+            }
+        }
+
+        // 전체 테스트 실행 단계
+        stage('Run Tests') {
+            steps {
+                sh 'pnpm test'
+            }
+        }
+
+        // GitHub Actions에서 실행하던 JavaScript 스크립트 실행 단계
+        stage('Run JavaScript script') {
+            steps {
+                script {
+                    sh 'node ./.github/workflows/auto-reviewer.cjs'
+                }
+            }
+        }
+
+        // Telegram 메시지 전송 단계
+        stage('Send message with Telegram') {
+            steps {
+                script {
+                    def conflictStatus = readFile('conflict_status.txt').trim()
+                    def message = conflictStatus.contains('true') ? "Has Conflict" : "Can Merge"
+                    def prUser = env.CHANGE_AUTHOR ?: "Unknown User"
+                    def prTitle = env.CHANGE_TITLE ?: "Unknown Title"
+                    def prLink = env.CHANGE_URL ?: "Unknown Link"
+
+                    // Telegram 메시지 전송을 위한 명령어 실행
+                    sh """
+                    curl -s -X POST https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage \
+                    -d chat_id=${env.PR_NOTICE_TELEGRAM_ID} \
+                    -d text="[[${message}]]\\nPR 요청인: ${prUser}\\nPR 타이틀: ${prTitle}\\nPR 링크: ${prLink}"
+                    """
+                }
+            }
+        }
+    }
+
+    post {
+        // 빌드 후 실행되는 작업 정의
+        always {
+            echo "Build finished"
+        }
+        success {
+            echo "Build was successful."
+        }
+        failure {
+            echo "Build failed."
+        }
+    }
+}
