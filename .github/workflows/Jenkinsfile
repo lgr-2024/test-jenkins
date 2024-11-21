@@ -8,6 +8,13 @@ pipeline {
     }
 
     stages {
+        stage('Checkout') {
+            steps {
+                // 기존 checkout scm 대신 명시적으로 Git 리포지토리를 설정합니다.
+                git branch: 'dev', url: 'https://github.com/your-repo/your-project.git', credentialsId: 'github-token'
+            }
+        }
+
         stage('Install Node.js') {
             tools {
                 nodejs 'nodejs-22.11.0'  // Node.js 환경 설정 (Global Tool Configuration에서 설정한 이름)
