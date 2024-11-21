@@ -11,7 +11,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 // 기존 checkout scm 대신 명시적으로 Git 리포지토리를 설정합니다.
-                git branch: 'dev', url: 'https://github.com/your-repo/your-project.git', credentialsId: 'github-token'
+                git branch: 'dev', url: 'https://github.com/lgr-2024/test-jenkins.git', credentialsId: 'github-token'
             }
         }
         
