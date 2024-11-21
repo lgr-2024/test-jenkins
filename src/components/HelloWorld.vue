@@ -18,7 +18,7 @@ defineProps({
   </div>
   <div>
     Hello World
-    3123123123123123asdasdasㅁㄴㄹㄴㅇㄹㄴㅇㄹㅁㄴㅇㅁㄴㅇㅁㄴㅇdasdaqedqdqdasdiyufoq2yuer89pq2ureoh
+    3123123123123123asdasdasㅁㄴㄹㄴㅇㄹㄹㄹㄹㄹㄴㅇㄹㅁㄴㅇㅁㄴㅇㅁㄴㅇdasdaqedqdqdasdiyufoq2yuer89pq2ureoh
   </div>
 </template>
 
