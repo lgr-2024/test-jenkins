@@ -14,45 +14,5 @@ pipeline {
                 git branch: 'dev', url: 'https://github.com/your-repo/your-project.git', credentialsId: 'github-token'
             }
         }
-
-        stage('Install Node.js') {
-            tools {
-                nodejs 'nodejs-22.11.0'  // Node.js 환경 설정 (Global Tool Configuration에서 설정한 이름)
-            }
-        }
-        
-        stage('Build') {
-            steps {
-                sh 'npm install -g pnpm'
-                sh 'pnpm install'
-                sh 'pnpm run test'
-            }
-        }
-        
-        stage('Run JavaScript Script') {
-            steps {
-                script {
-                    withEnv(['GITHUB_TOKEN', 'TELEGRAM_BOT_TOKEN']) {
-                        sh 'node ./.github/workflows/auto-reviewer.cjs'
-                    }
-                }
-            }
-        }
     }
-    
-    post {
-        success {
-            script {
-                if (env.HAS_CONFLICTS == 'true') {
-                    sendTelegramMessage("Has Conflict\nPR 요청인: ${env.CHANGE_AUTHOR}\nPR 타이틀: ${env.CHANGE_TITLE}\nPR 링크: ${env.CHANGE_URL}")
-                } else {
-                    sendTelegramMessage("Can Merge\nPR 요청인: ${env.CHANGE_AUTHOR}\nPR 타이틀: ${env.CHANGE_TITLE}\nPR 링크: ${env.CHANGE_URL}")
-                }
-            }
-        }
-    }
-}
-
-void sendTelegramMessage(String message) {
-    sh "curl -s -X POST https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage -d chat_id=${PR_NOTICE_TELEGRAM_ID} -d text=\"${message}\""
 }
