@@ -4,6 +4,9 @@ const github = require("@actions/github");
 const axios = require("axios");
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const PR_NOTICE_TELEGRAM_ID = process.env.PR_NOTICE_TELEGRAM_ID;
+const TEST_STATUS = process.env.TEST_STATUS;
+const CONFLICT_STATUS = process.env.CONFLICT_STATUS;
 const configPath = "./.github/review-config.yaml";
 const reviewConfig = fs.readFileSync(configPath, "utf8");
 const reviewConfigObj = yaml.load(reviewConfig);
@@ -11,21 +14,24 @@ const reviewConfigObj = yaml.load(reviewConfig);
 const minReviewers = reviewConfigObj.minReviewers;
 
 const prCreator = github.context.payload.pull_request.user.login;
+const prLink = `PR 링크: ${github.context.payload.pull_request.html_url}`;
+
+const reviewers = [
+	{ githubName: "khj-dev", telegramId: "6091937590", name: "김현진" },
+	{ githubName: "lgr-2024", telegramId: "6851873549", name: "임경락" },
+	{ githubName: "leein-dev", telegramId: "517915719", name: "이인" },
+	{ githubName: "jeongjun-dev", telegramId: "1343181442", name: "주정준" }
+];
+const availableReviewers = [
+	{ githubName: "khj-dev", telegramId: "6091937590", name: "김현진" },
+	{ githubName: "lgr-2024", telegramId: "6851873549", name: "임경락" },
+	{ githubName: "jeongjun-dev", telegramId: "1343181442", name: "주정준" }
+];
 
 async function main() {
 	// const { data: reviewers } = await axios.get(`${API_URL}/reviewers`);
 	// const { data: availableReviewers } = await axios.get(`${API_URL}/reviewers/available`);
-	const reviewers = [
-		{ githubName: "khj-dev", telegramId: "6091937590", name: "김현진" },
-		{ githubName: "lgr-2024", telegramId: "6851873549", name: "임경락" },
-		{ githubName: "leein-dev", telegramId: "517915719", name: "이인" },
-		{ githubName: "jeongjun-dev", telegramId: "1343181442", name: "주정준" }
-	];
-	const availableReviewers = [
-		{ githubName: "khj-dev", telegramId: "6091937590", name: "김현진" },
-		{ githubName: "lgr-2024", telegramId: "6851873549", name: "임경락" },
-		{ githubName: "jeongjun-dev", telegramId: "1343181442", name: "주정준" }
-	];
+
 	console.log("Available reviewers:", availableReviewers);
 	const selectedReviewers = selectRandomReviewers(availableReviewers);
 
@@ -40,6 +46,18 @@ async function main() {
 			issue_number: github.context.issue.number,
 			assignees: [prCreator]
 		});
+
+		// 테스트가 실패했다면 에러 메시지 발송
+		if (TEST_STATUS === "failure") {
+			const prCreatorTelegramId = reviewers.find(
+				(reviewer) => reviewer.githubName === prCreator
+			).telegramId;
+			await sendTelegramMessage(
+				prCreatorTelegramId,
+				`⚠️ 테스트 실패! PR을 다시 확인해주세요. ${prLink}`
+			);
+			return;
+		}
 
 		// PR에 이미 리뷰어가 지정되어 있는지 확인
 		const existingReviewers = await octokit.request(
@@ -95,16 +113,10 @@ function selectRandomReviewers(reviewers) {
 	return candidateReviewers.slice(0, minReviewers);
 }
 
-async function sendDirectTelegramMessage(reviewer, type) {
+async function sendTelegramMessage(telegramId, text) {
 	const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
-	const prLink = `PR 링크: ${github.context.payload.pull_request.html_url}`;
-	const text =
-		type === "open"
-			? `안녕하세요, ${reviewer.name}님! 오늘의 리뷰어로 선정되셨습니다. PR 리뷰 부탁드립니다. 🙏🏻\n${prLink}`
-			: `안녕하세요, ${reviewer.name}님! PR이 재 오픈 되었습니다. 수정사항을 확인 하시고 재리뷰 부탁드립니다. 🙏🏻\n${prLink}`;
-
 	const data = {
-		chat_id: reviewer.telegramId,
+		chat_id: telegramId,
 		text
 	};
 
@@ -114,6 +126,27 @@ async function sendDirectTelegramMessage(reviewer, type) {
 	} catch (error) {
 		console.error("Failed to send Telegram message:", error);
 	}
+}
+
+async function sendDirectTelegramMessage(reviewer, type) {
+	let text = "";
+
+	if (type === "open") {
+		text = `오늘의 리뷰어로 선정되셨습니다. PR 리뷰 부탁드립니다. 🙏🏻\n${prLink}`;
+	} else if (type === "reopen") {
+		text = `PR이 재 오픈 되었습니다. 수정사항을 확인 하시고 재리뷰 부탁드립니다. 🙏🏻\n${prLink}`;
+	}
+
+	sendTelegramMessage(reviewer.telegramId, text);
+	sendTelegramMessage(
+		PR_NOTICE_TELEGRAM_ID,
+		`
+		[[${CONFLICT_STATUS == "true" ? "Has Conflict" : "Can Merge"}]]
+		PR 요청인: ${prCreator}
+		PR 타이틀: ${github.context.payload.pull_request.title}
+		PR 링크: ${github.context.payload.pull_request.html_url}
+		`
+	);
 }
 
 main();
