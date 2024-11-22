@@ -10,6 +10,7 @@
     "test": "vitest"
   },
   "dependencies": {
+    "js-yaml": "^4.1.0",
     "vue": "^3.5.12"
   },
   "devDependencies": {
