@@ -15,27 +15,6 @@ pipeline {
                 checkout scm
             }
         }
-
-        stage('Conflict 체크') {
-            steps {
-                script {
-                    def hasConflicts = sh(
-                        script: '''
-                            git fetch origin ${env.CHANGE_TARGET}:${env.CHANGE_TARGET}
-                            git fetch origin ${env.CHANGE_BRANCH}:${env.CHANGE_BRANCH}
-                            HAS_CONFLICTS=$(git merge-tree $(git merge-base main ${env.CHANGE_BRANCH}) main ${env.CHANGE_BRANCH} | grep "<<<<<<<" || true)
-                            if [[ -z "$HAS_CONFLICTS" ]]; then
-                                echo "false"
-                            else
-                                echo "true"
-                            fi
-                        ''',
-                        returnStdout: true
-                    ).trim()
-                    env.CONFLICT_STATUS = hasConflicts
-                }
-            }
-        }
         
         stage('의존성 설치') {
             steps {
