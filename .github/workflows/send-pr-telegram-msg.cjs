@@ -1,7 +1,8 @@
 const fs = require("fs");
-const yaml = require("js-yaml");
+
 const github = require("@actions/github");
 const axios = require("axios");
+const yaml = require("js-yaml");
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const PR_NOTICE_TELEGRAM_ID = process.env.PR_NOTICE_TELEGRAM_ID;
@@ -93,6 +94,16 @@ async function main() {
 
 			await sendDirectTelegramMessage(reviewer, "open");
 		});
+
+		sendTelegramMessage(
+			PR_NOTICE_TELEGRAM_ID,
+			`
+			[[${CONFLICT_STATUS == "true" ? "Has Conflict" : "Can Merge"}]]
+			PR 요청인: ${prCreator}
+			PR 타이틀: ${github.context.payload.pull_request.title}
+			PR 링크: ${github.context.payload.pull_request.html_url}
+			`
+		);
 	}
 }
 
@@ -132,21 +143,12 @@ async function sendDirectTelegramMessage(reviewer, type) {
 	let text = "";
 
 	if (type === "open") {
-		text = `오늘의 리뷰어로 선정되셨습니다. PR 리뷰 부탁드립니다. 🙏🏻\n${prLink}`;
+		text = `🎉 오늘의 리뷰어로 선정되셨습니다. PR 리뷰 부탁드립니다.\n${prLink}`;
 	} else if (type === "reopen") {
-		text = `PR이 재 오픈 되었습니다. 수정사항을 확인 하시고 재리뷰 부탁드립니다. 🙏🏻\n${prLink}`;
+		text = `🔄 PR이 재 오픈 되었습니다. 수정사항을 확인 하시고 재리뷰 부탁드립니다.\n${prLink}`;
 	}
 
 	sendTelegramMessage(reviewer.telegramId, text);
-	sendTelegramMessage(
-		PR_NOTICE_TELEGRAM_ID,
-		`
-		[[${CONFLICT_STATUS == "true" ? "Has Conflict" : "Can Merge"}]]
-		PR 요청인: ${prCreator}
-		PR 타이틀: ${github.context.payload.pull_request.title}
-		PR 링크: ${github.context.payload.pull_request.html_url}
-		`
-	);
 }
 
 main();
