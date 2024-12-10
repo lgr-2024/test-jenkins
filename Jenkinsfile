@@ -12,7 +12,7 @@ pipeline {
     stages {
         stage('Connection') {
             steps {
-                echo '연결되어 있는가?'
+                echo 'trigger?'
             }
         }
     }
