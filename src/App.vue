@@ -1,10 +1,49 @@
-<script setup>
-import HelloWorld from './components/HelloWorld.vue'
-import TheWelcome from './components/TheWelcome.vue'
+<script setup lang="ts">
+import Big, { BigSource } from "big.js";
+import { onMounted, ref } from "vue";
+
+const old = ref("0");
+
+function handleNumber(event: Event) {
+  const newVal = (event.target as HTMLInputElement).value;
+  console.log(newVal);
+
+  // 1. validation
+  if (newVal === "") {
+    (event.target as HTMLInputElement).value = "";
+    old.value = "";
+    return;
+  }
+  const validated = util(old.value, newVal);
+
+  // 2. update
+  (event.target as HTMLInputElement).value = validated;
+  old.value = validated;
+}
+
+function util(oldVal: string, newVal: string) {
+  if (Big(newVal).gt(100)) {
+    return oldVal;
+  }
+
+  return newVal;
+}
+
+function formatNumber(num: BigSource) {
+  const bigPrice = Big(num);
+}
 </script>
 
 <template>
-  <header>
+  <input
+    id="name-input"
+    :modelValue="old"
+    @input="handleNumber"
+    type="text"
+    name="name-input"
+    data-testid="label-input"
+  />
+  <!-- <header>
     <img alt="Vue logo" class="logo" src="./assets/logo.svg" width="125" height="125" />
 
     <div class="wrapper">
@@ -14,7 +53,7 @@ import TheWelcome from './components/TheWelcome.vue'
 
   <main>
     <TheWelcome />
-  </main>
+  </main> -->
 </template>
 
 <style scoped>
