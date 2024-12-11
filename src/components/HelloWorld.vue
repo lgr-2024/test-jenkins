@@ -16,7 +16,7 @@ defineProps({
       <a href="https://vuejs.org/" target="_blank" rel="noopener">Vue 3</a>.
     </h3>
   </div>
-  <div>Jenkins Test 49</div>
+  <div>Jenkins Test 50</div>
 </template>
 
 <style scoped>
